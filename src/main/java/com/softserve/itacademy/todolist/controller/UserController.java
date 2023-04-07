@@ -1,25 +1,71 @@
 package com.softserve.itacademy.todolist.controller;
 
+import com.softserve.itacademy.todolist.model.User;
 import com.softserve.itacademy.todolist.dto.UserResponse;
+import com.softserve.itacademy.todolist.service.RoleService;
 import com.softserve.itacademy.todolist.service.UserService;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.http.HttpStatus;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.web.bind.annotation.*;
 
+import javax.servlet.http.HttpServletResponse;
+import javax.validation.Valid;
 import java.util.List;
 import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/users")
 public class UserController {
-    @Autowired
-    UserService userService;
+    private final UserService userService;
+    private final RoleService roleService;
+    private final PasswordEncoder passwordEncoder;
+
+    public UserController(UserService userService, RoleService roleService, PasswordEncoder passwordEncoder) {
+        this.userService = userService;
+        this.roleService = roleService;
+        this.passwordEncoder = passwordEncoder;
+    }
 
     @GetMapping
     List<UserResponse> getAll() {
         return userService.getAll().stream()
                 .map(UserResponse::new)
                 .collect(Collectors.toList());
+    }
+
+    @PostMapping("/create")
+    @ResponseStatus(HttpStatus.CREATED)
+    public User create(@Valid @RequestBody User user, HttpServletResponse response) {
+        user.setPassword(passwordEncoder.encode(user.getPassword()));
+        user.setRole(roleService.readById(2));
+        return userService.create(user);
+    }
+
+    @GetMapping("/{id}")
+    public User findById(@PathVariable long id, HttpServletResponse response) {
+        if (userService.readById(id) == null) response.setStatus(HttpServletResponse.SC_NOT_FOUND);
+        return userService.readById(id);
+    }
+
+    @PutMapping(value = "/{id}")
+    @ResponseStatus(HttpStatus.OK)
+    public void update(@PathVariable long id, @Valid @RequestBody User user, HttpServletResponse response) {
+        if (userService.readById(id) == null) response.setStatus(HttpServletResponse.SC_NOT_FOUND);
+        user.setId(id);
+        User oldUser = userService.readById(id);
+        if (oldUser.getRole().getName().equals("USER")) {
+            user.setRole(oldUser.getRole());
+        } else {
+            user.setRole(roleService.readById(2));
+        }
+        userService.update(user);
+    }
+
+
+    @DeleteMapping(value = "/{id}")
+    @ResponseStatus(HttpStatus.OK)
+    public void delete(@PathVariable("id") Long id, HttpServletResponse response) {
+        if (userService.readById(id) == null) response.setStatus(HttpServletResponse.SC_NOT_FOUND);
+        userService.delete(id);
     }
 }

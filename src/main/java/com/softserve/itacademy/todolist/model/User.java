@@ -1,5 +1,6 @@
 package com.softserve.itacademy.todolist.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -36,8 +37,8 @@ public class User implements UserDetails {
     @Column(name = "email", nullable = false, unique = true)
     private String email;
 
-    @Pattern(regexp = "[A-Za-z\\d]{6,}",
-            message = "Must be minimum 6 symbols long, using digits and latin letters")
+    @Pattern(regexp = "^.{6,}$",
+            message = "Must be minimum 6 symbols long")
     @Pattern(regexp = ".*\\d.*",
             message = "Must contain at least one digit")
     @Pattern(regexp = ".*[A-Z].*",
@@ -47,13 +48,16 @@ public class User implements UserDetails {
     @Column(name = "password", nullable = false)
     private String password;
 
+    @JsonIgnore
     @ManyToOne
     @JoinColumn(name = "role_id")
     private Role role;
 
+    @JsonIgnore
     @OneToMany(mappedBy = "owner", cascade = CascadeType.REMOVE)
     private List<ToDo> myTodos;
 
+    @JsonIgnore
     @ManyToMany
     @JoinTable(name = "todo_collaborator",
             joinColumns = @JoinColumn(name = "collaborator_id"),
