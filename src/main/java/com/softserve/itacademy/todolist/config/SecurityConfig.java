@@ -1,5 +1,6 @@
 package com.softserve.itacademy.todolist.config;
 
+import com.softserve.itacademy.todolist.service.RoleService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
@@ -25,6 +26,9 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
     @Autowired
     UserDetailsService userServiceImpl;
 
+    @Autowired
+    RoleService roleService;
+
     @Override
     protected void configure(AuthenticationManagerBuilder auth) throws Exception {
         auth.userDetailsService(userServiceImpl);
@@ -48,7 +52,8 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
                         .sessionCreationPolicy(SessionCreationPolicy.STATELESS) // no session
                 )
                 .authorizeHttpRequests(a -> a
-                        .anyRequest().permitAll() // todo
+                        /*.requestMatchers("").hasRole(roleService.readById(2)) //for user
+                        */.anyRequest().permitAll() // todo
                 );
     }
 
