@@ -1,5 +1,6 @@
 package com.softserve.itacademy.todolist.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -25,13 +26,16 @@ public class ToDo {
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
 
+    @JsonIgnore
     @ManyToOne
     @JoinColumn(name = "owner_id")
     private User owner;
 
+    @JsonIgnore
     @OneToMany(mappedBy = "todo", cascade = CascadeType.REMOVE)
     private List<Task> tasks;
 
+    @JsonIgnore
     @ManyToMany
     @JoinTable(name = "todo_collaborator",
             joinColumns = @JoinColumn(name = "todo_id"),
