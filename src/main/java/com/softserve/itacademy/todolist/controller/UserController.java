@@ -8,11 +8,13 @@ import com.softserve.itacademy.todolist.service.RoleService;
 import com.softserve.itacademy.todolist.service.ToDoService;
 import com.softserve.itacademy.todolist.service.UserService;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 
 import javax.validation.Valid;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -47,7 +49,7 @@ public class UserController {
     }
 
     @GetMapping("/{id}")
-    public User findById(@PathVariable long id) {
+    public User findById(@PathVariable long id, Authentication authentication) {
         if (userService.readById(id) == null) throw new ResponseStatusException(HttpStatus.NOT_FOUND);
         return userService.readById(id);
     }
@@ -75,8 +77,13 @@ public class UserController {
     }
 
     @GetMapping("{user_id}/todos")
-    List<ToDo> getAllTodos(@PathVariable("user_id") Long user_id) {
-
+    List<ToDo> getUsersTodos(@PathVariable("user_id") Long user_id) {
+        List<ToDo> todos = userService.readById(user_id).getMyTodos();
+        toDoService.getAll().forEach(toDo -> {
+            if (toDo.getCollaborators().contains(userService.readById(user_id))) {
+                todos.add(toDo);
+            }
+        });
         return userService.readById(user_id).getMyTodos();
     }
 
@@ -100,3 +107,14 @@ public class UserController {
         toDoService.readById(todo_id).setCollaborators(collaborators);
     }
 }
+
+//Admin check: authentication.getAuthorities().contains(roleService.readById(1))
+
+/* Request body fot post requests to create/update user
+{
+        "firstName": "John",
+        "lastName": "Doe",
+        "email": "johndoe2@mail.com",
+        "password": "Ma3004"
+}
+*/

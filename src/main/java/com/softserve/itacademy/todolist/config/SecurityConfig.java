@@ -1,74 +1,78 @@
 package com.softserve.itacademy.todolist.config;
 
-import com.softserve.itacademy.todolist.service.RoleService;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
+import com.softserve.itacademy.todolist.auth.AuthEntryPoint;
+import com.softserve.itacademy.todolist.auth.JwtRequestFilter;
+import com.softserve.itacademy.todolist.auth.JwtUtils;
 import org.springframework.context.annotation.Bean;
-import org.springframework.security.config.annotation.authentication.builders.AuthenticationManagerBuilder;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
+import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.method.configuration.EnableGlobalMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
-import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
-import org.springframework.security.config.annotation.web.configuration.WebSecurityConfigurerAdapter;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.security.web.AuthenticationEntryPoint;
+import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
-import static org.springframework.http.HttpStatus.UNAUTHORIZED;
+@Configuration
+@EnableGlobalMethodSecurity(
+        // securedEnabled = true,
+        // jsr250Enabled = true,
+        prePostEnabled = true)
+public class SecurityConfig {
 
-@Slf4j
-@EnableWebSecurity
-@EnableGlobalMethodSecurity(prePostEnabled = true)
-public class SecurityConfig extends WebSecurityConfigurerAdapter {
-    // todo: check https://spring.io/blog/2022/02/21/spring-security-without-the-websecurityconfigureradapter
+    private final JwtUtils jwtUtils;
 
-    @Autowired
-    UserDetailsService userServiceImpl;
+    private final UserDetailsService userDetailsService;
 
-    @Autowired
-    RoleService roleService;
+    private final AuthEntryPoint unauthorizedHandler;
 
-    @Override
-    protected void configure(AuthenticationManagerBuilder auth) throws Exception {
-        auth.userDetailsService(userServiceImpl);
-    }
-
-    @Override
-    protected void configure(HttpSecurity http) throws Exception {
-        http
-                .exceptionHandling(eh -> eh
-                        .authenticationEntryPoint(restAuthenticationEntryPoint())
-                )
-                .httpBasic(hb -> hb
-                        .authenticationEntryPoint(restAuthenticationEntryPoint()) // Handles auth error
-                )
-                .csrf().disable()
-                .headers(h -> h
-                        .frameOptions() // for Postman, the H2 console
-                        .disable()
-                )
-                .sessionManagement(sm -> sm
-                        .sessionCreationPolicy(SessionCreationPolicy.STATELESS) // no session
-                )
-                .authorizeHttpRequests(a -> a
-                        /*.requestMatchers("").hasRole(roleService.readById(2)) //for user
-                        */.anyRequest().permitAll() // todo
-                );
+    public SecurityConfig(JwtUtils jwtUtils, UserDetailsService userDetailsService, AuthEntryPoint unauthorizedHandler) {
+        this.jwtUtils = jwtUtils;
+        this.userDetailsService = userDetailsService;
+        this.unauthorizedHandler = unauthorizedHandler;
     }
 
     @Bean
-    PasswordEncoder passwordEncoder() {
+    public JwtRequestFilter authenticationJwtTokenFilter() {
+        return new JwtRequestFilter(userDetailsService, jwtUtils);
+    }
+
+    @Bean
+    public DaoAuthenticationProvider authenticationProvider() {
+        DaoAuthenticationProvider authProvider = new DaoAuthenticationProvider();
+
+        authProvider.setUserDetailsService(userDetailsService);
+        authProvider.setPasswordEncoder(passwordEncoder());
+
+        return authProvider;
+    }
+
+    @Bean
+    public AuthenticationManager authenticationManager(AuthenticationConfiguration authConfig) throws Exception {
+        return authConfig.getAuthenticationManager();
+    }
+
+    @Bean
+    public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
     }
 
     @Bean
-    AuthenticationEntryPoint restAuthenticationEntryPoint() {
-        return (request, response, authException) -> {
-            log.warn("Authentication for '{} {}' failed with error: {}",
-                    request.getMethod(), request.getRequestURL(), authException.getMessage());
-            response.sendError(
-                    UNAUTHORIZED.value(), authException.getMessage());
-        };
+    public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+        http.cors().and().csrf().disable()
+                .exceptionHandling().authenticationEntryPoint(unauthorizedHandler).and()
+                .sessionManagement().sessionCreationPolicy(SessionCreationPolicy.STATELESS).and()
+                .authorizeRequests().antMatchers("/api/auth/**").permitAll()
+                .anyRequest().authenticated();
+
+        http.authenticationProvider(authenticationProvider());
+
+        http.addFilterBefore(authenticationJwtTokenFilter(), UsernamePasswordAuthenticationFilter.class);
+
+        return http.build();
     }
 }
