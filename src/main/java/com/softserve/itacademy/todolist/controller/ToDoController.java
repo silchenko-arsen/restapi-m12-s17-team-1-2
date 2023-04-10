@@ -1,10 +1,12 @@
 package com.softserve.itacademy.todolist.controller;
 
 import com.softserve.itacademy.todolist.model.ToDo;
+import com.softserve.itacademy.todolist.model.User;
 import com.softserve.itacademy.todolist.service.TaskService;
 import com.softserve.itacademy.todolist.service.ToDoService;
 import com.softserve.itacademy.todolist.service.UserService;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -26,8 +28,15 @@ public class ToDoController {
     }
 
     @GetMapping()
-    List<ToDo> getAll(@PathVariable("user_id") Long user_id) {
+    @ResponseStatus(HttpStatus.OK)
+    List<ToDo> getAll(@PathVariable("user_id") long user_id,
+                      Authentication authentication) {
         if(userService.readById(user_id) == null) throw new ResponseStatusException(HttpStatus.NOT_FOUND);
+        User user = (User) authentication.getPrincipal();
+        long idFromAuth = user.getId();
+        if (user_id != idFromAuth && !userService.readById(idFromAuth).getRole().getName().equals("ADMIN")) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN);
+        }
         List<ToDo> todos = userService.readById(user_id).getMyTodos();
         toDoService.getAll().forEach(toDo -> {
             if (toDo.getCollaborators().contains(userService.readById(user_id))) {

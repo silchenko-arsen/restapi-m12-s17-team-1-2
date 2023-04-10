@@ -76,19 +76,9 @@ public class UserController {
         userService.delete(id);
     }
 
-    @GetMapping("{user_id}/todos")
-    List<ToDo> getUsersTodos(@PathVariable("user_id") Long user_id) {
-        List<ToDo> todos = userService.readById(user_id).getMyTodos();
-        toDoService.getAll().forEach(toDo -> {
-            if (toDo.getCollaborators().contains(userService.readById(user_id))) {
-                todos.add(toDo);
-            }
-        });
-        return userService.readById(user_id).getMyTodos();
-    }
 
     @GetMapping("{user_id}/todos/{todo_id}/tasks")
-    List<Task> getTasks(@PathVariable("user_id") Long user_id, @PathVariable("todo_id") int todo_id) {
+    List<Task> getTasks(@PathVariable("user_id") long user_id, @PathVariable("todo_id") int todo_id) {
         return userService.readById(user_id).getMyTodos().get(todo_id).getTasks();
     }
 
@@ -100,12 +90,7 @@ public class UserController {
         return task;
     }
 
-    @PostMapping("{user_id}/todos/{todo_id}/collaborators")
-    void addCollaborator(@PathVariable("user_id") Long user_id, @PathVariable("todo_id") int todo_id){
-        List<User> collaborators = toDoService.readById(todo_id).getCollaborators();
-        collaborators.add(userService.readById(user_id));
-        toDoService.readById(todo_id).setCollaborators(collaborators);
-    }
+
 }
 
 //Admin check: authentication.getAuthorities().contains(roleService.readById(1))
