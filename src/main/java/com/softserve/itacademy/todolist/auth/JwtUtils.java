@@ -23,7 +23,7 @@ public class JwtUtils implements Serializable {
     @Serial
     private static final long serialVersionUID = -2550185165626007488L;
 
-    public static final long JWT_TOKEN_VALIDITY = 5 * 60 * 60;
+    public static final long JWT_TOKEN_VALIDITY = 15; //15 minutes
 
     @Value("${jwt.secret}")
     private String secret;
@@ -72,7 +72,7 @@ public class JwtUtils implements Serializable {
                 .setSubject(subject)
                 .setIssuedAt(Date.from(now))
                 .setExpiration(
-                        Date.from(now.plus(System.currentTimeMillis() + JWT_TOKEN_VALIDITY * 1000,
+                        Date.from(now.plus(System.currentTimeMillis() + JWT_TOKEN_VALIDITY,
                                 ChronoUnit.MINUTES)))
                 .signWith(getSecretKey())
                 .compact();

@@ -1,11 +1,8 @@
 package com.softserve.itacademy.todolist.controller;
 
-import com.softserve.itacademy.todolist.model.Task;
-import com.softserve.itacademy.todolist.model.ToDo;
 import com.softserve.itacademy.todolist.model.User;
 import com.softserve.itacademy.todolist.dto.UserResponse;
 import com.softserve.itacademy.todolist.service.RoleService;
-import com.softserve.itacademy.todolist.service.ToDoService;
 import com.softserve.itacademy.todolist.service.UserService;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
@@ -14,7 +11,6 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 
 import javax.validation.Valid;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -22,16 +18,14 @@ import java.util.stream.Collectors;
 @RequestMapping("/api/users")
 public class UserController {
     private final UserService userService;
-    private final ToDoService toDoService;
     private final RoleService roleService;
     private final PasswordEncoder passwordEncoder;
 
-    public UserController(UserService userService, ToDoService toDoService, RoleService roleService, PasswordEncoder passwordEncoder) {
+    public UserController(UserService userService, RoleService roleService, PasswordEncoder passwordEncoder) {
         this.userService = userService;
-        this.toDoService = toDoService;
         this.roleService = roleService;
         this.passwordEncoder = passwordEncoder;
-    }
+   }
 
     @GetMapping
     List<UserResponse> getAll() {
@@ -50,13 +44,15 @@ public class UserController {
 
     @GetMapping("/{id}")
     public User findById(@PathVariable long id, Authentication authentication) {
+        authorize(id, authentication);
         if (userService.readById(id) == null) throw new ResponseStatusException(HttpStatus.NOT_FOUND);
         return userService.readById(id);
     }
 
     @PutMapping(value = "/{id}")
     @ResponseStatus(HttpStatus.OK)
-    public void update(@PathVariable long id, @Valid @RequestBody User user) {
+    public void update(@PathVariable long id, @Valid @RequestBody User user, Authentication authentication) {
+        authorize(id, authentication);
         if (userService.readById(id) == null) throw new ResponseStatusException(HttpStatus.NOT_FOUND);
         user.setId(id);
         User oldUser = userService.readById(id);
@@ -68,38 +64,21 @@ public class UserController {
         userService.update(user);
     }
 
-
     @DeleteMapping(value = "/{id}")
     @ResponseStatus(HttpStatus.OK)
-    public void delete(@PathVariable("id") Long id) {
+    public void delete(@PathVariable("id") Long id, Authentication authentication) {
+        authorize(id, authentication);
         if (userService.readById(id) == null) throw new ResponseStatusException(HttpStatus.NOT_FOUND);
         userService.delete(id);
     }
 
-
-    @GetMapping("{user_id}/todos/{todo_id}/tasks")
-    List<Task> getTasks(@PathVariable("user_id") long user_id, @PathVariable("todo_id") int todo_id) {
-        return userService.readById(user_id).getMyTodos().get(todo_id).getTasks();
-    }
-
-    @PostMapping("/api/todos/{todo_id}/tasks")
-    Task createTask(@RequestBody Task task, @PathVariable("todo_id") int todo_id) {
-        List<Task> tasks = toDoService.readById(todo_id).getTasks();
-        tasks.add(task);
-        toDoService.readById(todo_id).setTasks(tasks);
-        return task;
+    public void authorize(long id, Authentication authentication) {
+        User user = (User) authentication.getPrincipal();
+        long idFromAuth = user.getId();
+        if (id != idFromAuth && !userService.readById(idFromAuth).getRole().getName().equals("ADMIN")) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN);
+        }
     }
 
 
 }
-
-//Admin check: authentication.getAuthorities().contains(roleService.readById(1))
-
-/* Request body fot post requests to create/update user
-{
-        "firstName": "John",
-        "lastName": "Doe",
-        "email": "johndoe2@mail.com",
-        "password": "Ma3004"
-}
-*/
