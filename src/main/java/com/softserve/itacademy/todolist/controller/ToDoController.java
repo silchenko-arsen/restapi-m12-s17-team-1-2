@@ -48,7 +48,13 @@ public class ToDoController {
 
     @PostMapping("/create")
     @ResponseStatus(HttpStatus.CREATED)
-    public ToDo create(@PathVariable("user_id") long ownerId, @Valid @RequestBody ToDo todo) {
+    public ToDo create(@PathVariable("user_id") long ownerId, @Valid @RequestBody ToDo todo, Authentication authentication) {
+        if(userService.readById(ownerId) == null) throw new ResponseStatusException(HttpStatus.NOT_FOUND);
+        User user = (User) authentication.getPrincipal();
+        long idFromAuth = user.getId();
+        if (ownerId != idFromAuth && !userService.readById(idFromAuth).getRole().getName().equals("ADMIN")) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN);
+        }
         todo.setCreatedAt(LocalDateTime.now());
         todo.setOwner(userService.readById(ownerId));
         return toDoService.create(todo);
@@ -56,20 +62,29 @@ public class ToDoController {
 
     @GetMapping("/{id}")
     @ResponseStatus(HttpStatus.OK)
-    public ToDo read(@PathVariable long id, @PathVariable long user_id) {
-        if (toDoService.readById(id) == null) throw new ResponseStatusException(HttpStatus.NOT_FOUND);
+    public ToDo read(@PathVariable long id, @PathVariable long user_id, Authentication authentication) {
+        if (toDoService.readById(id) == null || userService.readById(user_id) == null) throw new ResponseStatusException(HttpStatus.NOT_FOUND);
+        User user = (User) authentication.getPrincipal();
+        long idFromAuth = user.getId();
+        if (user_id != idFromAuth && !userService.readById(idFromAuth).getRole().getName().equals("ADMIN")) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN);
+        }
         if (toDoService.readById(id).getCollaborators().contains(userService.readById(user_id)) || userService.readById(user_id).getRole().getName().equals("ADMIN") || toDoService.readById(id).getOwner().getId() == user_id){
             return toDoService.readById(id);
         }else {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN);
         }
-
     }
 
     @PutMapping("/{id}")
     @ResponseStatus(HttpStatus.OK)
-    public void update(@PathVariable long id, @Valid @RequestBody ToDo toDo, @PathVariable long user_id) {
-        if (toDoService.readById(id) == null) throw new ResponseStatusException(HttpStatus.NOT_FOUND);
+    public void update(@PathVariable long id, @Valid @RequestBody ToDo toDo, @PathVariable long user_id, Authentication authentication) {
+        if (toDoService.readById(id) == null || userService.readById(user_id) == null) throw new ResponseStatusException(HttpStatus.NOT_FOUND);
+        User user = (User) authentication.getPrincipal();
+        long idFromAuth = user.getId();
+        if (user_id != idFromAuth && !userService.readById(idFromAuth).getRole().getName().equals("ADMIN")) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN);
+        }
         if (toDoService.readById(id).getCollaborators().contains(userService.readById(user_id)) || userService.readById(user_id).getRole().getName().equals("ADMIN") || toDoService.readById(id).getOwner().getId() == user_id) {
             ToDo oldTodo = toDoService.readById(id);
             toDo.setId(id);
@@ -84,13 +99,17 @@ public class ToDoController {
 
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.OK)
-    public void delete(@PathVariable long id, @PathVariable long user_id) {
-        if (toDoService.readById(id) == null) throw new ResponseStatusException(HttpStatus.NOT_FOUND);
+    public void delete(@PathVariable long id, @PathVariable long user_id, Authentication authentication) {
+        if (toDoService.readById(id) == null || userService.readById(user_id) == null) throw new ResponseStatusException(HttpStatus.NOT_FOUND);
+        User user = (User) authentication.getPrincipal();
+        long idFromAuth = user.getId();
+        if (user_id != idFromAuth && !userService.readById(idFromAuth).getRole().getName().equals("ADMIN")) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN);
+        }
         if (toDoService.readById(id).getCollaborators().contains(userService.readById(user_id)) || userService.readById(user_id).getRole().getName().equals("ADMIN") || toDoService.readById(id).getOwner().getId() == user_id) {
             toDoService.delete(id);
         }else {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN);
         }
     }
-
 }
