@@ -16,7 +16,7 @@ import javax.validation.Valid;
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/")
+@RequestMapping("/api/users/{user_id}/todos/{todo_id}/tasks")
 public class TaskController {
     private final TaskService taskService;
     private final ToDoService todoService;
